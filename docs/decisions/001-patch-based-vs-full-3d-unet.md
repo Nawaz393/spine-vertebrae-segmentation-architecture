@@ -9,7 +9,7 @@
   - High spatial resolution preserved without downsampling voxel density.
   - Scalable to standard workstation hardware and Cloud TPUs during training and clinical inference.
   - Generates 482,833 diverse anatomical training samples (386,266 train / 96,567 val).
-  - Achieves empirical performance of **88.46% Dice**, **83.26% Jaccard (IoU)**, **93.81% Sensitivity**, and **91.01% BF-score**, outperforming 8 state-of-the-art segmentation networks.
+  - Achieves empirical performance of **88.46% Dice**, **83.26% Jaccard (IoU)**, **93.81% Sensitivity**, and **91.01% BF-score** on independent test evaluations.
 - **Trade-offs:** Introduces inference overhead during reverse volumetric stitching and requires post-processing to eliminate patch boundary discontinuities.
 - **Alternatives:**
   - Full 3D U-Net: Rejected due to GPU memory exhaustion and severe spatial downsampling requirements.

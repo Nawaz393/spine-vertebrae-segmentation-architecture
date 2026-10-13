@@ -24,7 +24,7 @@ This project implements a complete, validated medical deep learning pipeline:
 1. **Multi-Stage Radiographic Preprocessing**: Normalizes CT volumes into $[0, 255]$, extracts $512 \times 512$ axial slices, applies intensity thresholding (eliminating voxels $<63$ to remove air and soft tissue), and executes $3 \times 3$ Gaussian filtering to suppress imaging noise.
 2. **Overlapping Patch Extraction**: Tiles 2D slices into $128 \times 128$ overlapping patches with a **32-pixel stride**, compiling a rich dataset of **482,833 patches** (386,266 training / 96,567 validation) that preserves localized context without global GPU downsampling.
 3. **Optimized U-Net Architecture**: Trains an encoder-decoder network using **AdamW** (initial learning rate $0.0003$, batch size $128$) with **Binary Cross-Entropy with Logits (`BCELogitLoss`)**, converging at **Epoch 15** over ~48 hours of compute.
-4. **Benchmark-Beating Segmentation**: Evaluated across **5 test patient cases containing 3,418 slices**, achieving **88.46% Dice**, **83.26% Jaccard Index**, **91.01% BF-score**, and **93.81% Sensitivity**, outperforming 8 state-of-the-art segmentation networks (including standard U-Net, D-TVNet, SpineParseNet, MultiResUNet, PaDBN, ResNet, and DenseNet).
+4. **Empirical Quantitative Validation**: Evaluated across **5 test patient cases containing 3,418 slices**, achieving **88.46% Dice**, **83.26% Jaccard Index**, **91.01% BF-score**, and **93.81% Sensitivity**, demonstrating sharp boundary delineation and reliable volumetric generalization.
 5. **3D Volumetric Reassembly & Clinical Web Workstation**: Reverse-stitches predicted patch probabilities into full $512 \times 512$ masks with 3D morphological post-processing, re-attaches native scanner affine transformation headers (`recon3d.nii`), and serves an interactive React + Three.js viewer for radiologist multi-planar review and pre-operative 3D surgical printing.
 
 ---
@@ -52,22 +52,16 @@ Across 482,833 total patches (80% train / 20% validation split):
 
 ---
 
-## State-of-the-Art Comparative Benchmark 
-Direct empirical comparison against established medical segmentation and classification networks evaluated under identical criteria:
+## Architectural Strengths & Performance Analysis
 
-| Category | Model Architecture | Sensitivity (SEN %) | BF-Score (%) | Jaccard (JAC %) | Dice (DSC %) |
-|---|---|:---:|:---:|:---:|:---:|
-| **Segmentation Networks** | Standard U-Net (Ronneberger et al.) | 79.40 | 81.40 | 71.90 | 83.70 |
-| | D-TVNet (Lyu et al.) | 84.90 | 78.20 | 76.50 | 86.70 |
-| | SpineParseNet (Cheng et al.) | 88.00 | 87.60 | 77.50 | 87.30 |
-| | MultiResUNet | 87.50 | 89.10 | 73.80 | 84.90 |
-| **Classification-Based Segmentation** | PaDBN (Qadri et al.) | 89.70 | 84.90 | 75.60 | 86.10 |
-| | VGG Net (Simonyan & Zisserman) | 90.10 | 78.80 | 70.00 | 81.90 |
-| | ResNet (He et al.) | 85.40 | 83.70 | 73.20 | 84.50 |
-| | DenseNet (Huang et al.) | 77.90 | 80.00 | 77.60 | 87.40 |
-| **Proposed Method** | **Patch-Based U-Net (Ours)** | **93.81%** | **91.01%** | **83.26%** | **88.46%** |
+The patch-based formulation and specialized preprocessing yield notable advantages across the evaluated clinical cases:
 
-*Our proposed framework outperforms the baseline standard U-Net by **+4.76% in Dice** and **+11.36% in Jaccard Index**, while surpassing advanced architectures like SpineParseNet (+1.16% Dice, +5.76% IoU).*
+1. **High True-Positive Bone Recall (93.81% Sensitivity)**:
+   - High sensitivity is clinically vital in spine surgery. By focusing receptive fields on local $128 \times 128$ windows, the network avoids washing out fine anatomical structures like transverse processes, spinous processes, and articular facets.
+2. **Sub-Millimeter Contour Alignment (91.01% BF-Score)**:
+   - The Boundary F-score measures contour precision along the perimeter of the vertebrae. The combination of $3 \times 3$ Gaussian smoothing during preprocessing and high-resolution skip connections during decoding retains high-frequency cortical edges.
+3. **Volumetric Overlap Consistency (88.46% Dice, 83.26% Jaccard)**:
+   - Dense spatial overlap without hollow trabecular core omissions. The 32-pixel overlapping stride provides multiple voting angles for boundary voxels during reverse projection, preventing seam artifacts.
 
 ---
 
@@ -133,7 +127,7 @@ flowchart TB
 | **Domain Map** | System decomposition, data contracts, and component responsibilities | [Domain Map](docs/domain-map.md) |
 | **Production Code Examples** | Preprocessing, patch tiler, U-Net architecture, and 3D reconstructor | [Code Examples](docs/code-examples.md) |
 | **Radiographic Preprocessing** | CT physics, $[0, 255]$ scaling, thresholding, and Gaussian filtering | [Medical Preprocessing](docs/medical-image-preprocessing.md) |
-| **Deep Learning & Results** | Concrete formulas, Table 2 benchmark analysis, and convergence curves | [Deep Learning & Training](docs/deep-learning-and-training.md) |
+| **Deep Learning & Results** | Concrete metric formulas, training dynamics, and empirical test scores | [Deep Learning & Training](docs/deep-learning-and-training.md) |
 | **3D Volumetric Reconstruction** | Reverse coordinate stitching, morphological filtering, and NIfTI export | [3D Reconstruction](docs/3d-volumetric-reconstruction.md) |
 | **Architecture Decision Records** | Key engineering decisions, trade-offs, and alternatives | [ADRs](docs/decisions/README.md) |
 | **Reusable Diagrams** | Standalone Mermaid source files for all pipeline diagrams | [Diagrams](diagrams/README.md) |

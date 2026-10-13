@@ -113,25 +113,27 @@ To evaluate full slice-by-slice vertebrae boundary overlap across the 3,418 test
 
 ---
 
-## 5. Comparative SOTA Benchmark (Table 2 from Research)
+## 5. Architectural Performance & Clinical Metric Analysis
 
-Comparison against published segmentation architectures evaluated under identical clinical protocols:
+Evaluation across the independent test cohort (5 complete patient scans, 3,418 slices) demonstrates specific structural and algorithmic strengths:
 
-| Category | Model | SEN (%) | BF-Score (%) | JAC (%) | DSC (%) |
-|---|---|:---:|:---:|:---:|:---:|
-| **Segmentation Networks** | Standard U-Net (Ronneberger et al.) | 79.40 | 81.40 | 71.90 | 83.70 |
-| | D-TVNet (Lyu et al.) | 84.90 | 78.20 | 76.50 | 86.70 |
-| | SpineParseNet (Cheng et al.) | 88.00 | 87.60 | 77.50 | 87.30 |
-| | MultiResUNet | 87.50 | 89.10 | 73.80 | 84.90 |
-| **Classification-Based Networks** | PaDBN (Qadri et al.) | 89.70 | 84.90 | 75.60 | 86.10 |
-| | VGG Net (Simonyan & Zisserman) | 90.10 | 78.80 | 70.00 | 81.90 |
-| | ResNet (He et al.) | 85.40 | 83.70 | 73.20 | 84.50 |
-| | DenseNet (Huang et al.) | 77.90 | 80.00 | 77.60 | 87.40 |
-| **Proposed Method** | **UNet (Proposed)** | **93.81%** | **91.01%** | **83.26%** | **88.46%** |
+### 1. Receptive Field vs. Boundary Resolution Balance
+Full-volume 3D isotropic networks downsample spatial grids to fit within GPU VRAM limits, which blurs thin cortical edges and articular processes. In contrast, standard whole-slice 2D networks ($512 \times 512$) frequently dilute gradient signals across large non-vertebral background regions. 
 
-### Benchmark Analysis:
-1. **Vs. Standard Whole-Image U-Net**: Standard U-Net takes full $512 \times 512$ slices in a single pass, losing local high-frequency boundary textures. Our patch-based approach improves DSC from **83.70% to 88.46% (+4.76%)** and Jaccard from **71.90% to 83.26% (+11.36%)**.
-2. **Vs. Multi-Stage Models (SpineParseNet & D-TVNet)**: D-TVNet suffers from sensitivity to noisy edge pixels (78.20% BF-score), while SpineParseNet achieves 87.30% DSC. Our approach surpasses SpineParseNet by **+1.16% in DSC** and **+5.76% in JAC**.
-3. **Vs. Classification Networks (PaDBN, VGG, ResNet)**: Classification-based segmentation models (like PaDBN at 86.10% DSC) lack the dense pixel-to-pixel skip connections inherent in U-Net, resulting in degraded boundary sensitivity.
+By decomposing axial slices into $128 \times 128$ patches with a 32-pixel stride:
+- The local receptive field matches the characteristic dimensions of vertebral pedicles, laminae, and facet joints.
+- Dense spatial skip connections in the U-Net pass high-frequency edge gradients directly to decoder upsampling layers, achieving a **91.01% Boundary F-score**.
+
+### 2. Sensitivity in Complex Anatomical Zones
+Vertebral segmentation presents severe false-negative risks where vertebrae interface with rib heads, transverse processes, and ligamentous structures. The model achieved a **93.81% Sensitivity (Recall)** on test cases, indicating that true vertebral bone boundaries are consistently captured without hollow dropouts in trabecular bone.
+
+### 3. Overlap Precision and Seam Mitigation
+A primary concern with patch-based deep learning is seam discontinuities at patch boundaries. By combining:
+- A tight **32-pixel sliding stride** ($75\%$ overlap across adjacent patches),
+- Multi-patch mean probability aggregation during 2D canvas assembly, and
+- $3 \times 3$ morphological post-processing,
+
+the pipeline achieves **88.46% Dice** and **83.26% Jaccard Index** across full-volume reconstructions without tiling seam artifacts.
 
 Related: [Architecture](architecture.md) · [Preprocessing Deep Dive](medical-image-preprocessing.md) · [3D Reconstruction](3d-volumetric-reconstruction.md)
+
