@@ -24,9 +24,9 @@ flowchart TB
     end
 
     subgraph ReconstructionEngine ["5. 3D Volumetric Reconstruction"]
-        Stitching["Sliding-Window Reverse Patch Staging"]
-        OverlapVoting["Gaussian Weighted Overlap Blending"]
-        Morphology["3D Morphological Post-Processing"]
+        Stitching["2D Slice Reverse Patch Assembly (128x128)"]
+        Stacking["Axial Volumetric Stacking (np.stack along Z)"]
+        AffinePreserve["Native 4x4 Affine & Header Re-anchoring"]
         NiftiOut[/"Segmented 3D NIfTI Volume (recon3d.nii)"/]
     end
 
@@ -49,10 +49,10 @@ flowchart TB
     LossFunc --> Training
     Training --> Metrics
     UNet --> Stitching
-    Stitching --> OverlapVoting
-    OverlapVoting --> Morphology
-    Headers -.-> Morphology
-    Morphology --> NiftiOut
+    Stitching --> Stacking
+    Stacking --> AffinePreserve
+    Headers -.-> AffinePreserve
+    AffinePreserve --> NiftiOut
     NiftiOut --> FlaskAPI
     FlaskAPI --> NodeBridge
     NodeBridge --> ReactUI

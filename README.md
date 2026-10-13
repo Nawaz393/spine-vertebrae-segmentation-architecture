@@ -136,7 +136,7 @@ flowchart TB
 
 ## Author & Contact
 
-**M Nawaz Khan — Full Stack Developer & AI Systems Engineer**
+**M Nawaz Khan  Full Stack Developer & AI Researcher**
 - GitHub: [Nawaz393](https://github.com/Nawaz393)
 - LinkedIn: [Muhammad Nawaz Khan](https://www.linkedin.com/in/nawaz393)
 

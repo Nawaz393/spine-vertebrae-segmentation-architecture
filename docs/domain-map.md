@@ -30,9 +30,9 @@ flowchart TD
     end
 
     subgraph RECON_CTX ["3D Volumetric Reconstruction Context"]
-        STITCH_ENG["Reverse Patch Coordinate Mapper"]
-        MORPH_POST["3D Morphological Filtering Engine"]
-        NII_BUILDER["Coordinate-Preserving NIfTI Reconstructor"]
+        STITCH_ENG["Reverse Patch Coordinate Mapper (reconstruct_image)"]
+        STACK_ENG["Volumetric Z-Axis Array Stacker (np.stack)"]
+        NII_BUILDER["Coordinate-Preserving NIfTI Reconstructor (construct_3d_image)"]
     end
 
     subgraph CLINICAL_CTX ["Clinical Presentation Context"]
@@ -50,8 +50,8 @@ flowchart TD
     TRAINER --> UNET_MODEL
     UNET_MODEL --> JIT_SER
     JIT_SER --> STITCH_ENG
-    STITCH_ENG --> MORPH_POST
-    MORPH_POST --> NII_BUILDER
+    STITCH_ENG --> STACK_ENG
+    STACK_ENG --> NII_BUILDER
     METADATA_EXTR -.->|"Affine & Header Preservation"| NII_BUILDER
     NII_BUILDER --> MESH_VIEW
     NII_BUILDER --> SLICE_VIEW
@@ -88,9 +88,9 @@ flowchart TD
 ### 2.4 3D Volumetric Reconstruction Context (`Reconstruction.py`)
 - **Boundary**: Geometric reverse-mapping of 2D patches into full 3D spatial volumes.
 - **Primary Entities**:
-  - `SliceReassembler`: Re-projects predicted patch arrays onto zero-initialized $512 \times 512$ 2D slice grids.
-  - `MorphologicalRefiner`: Mathematical morphology operations ($5 \times 5$ opening kernel, 3D hole closing) eliminating disconnected false positives.
-  - `NiftiVolumeBuilder`: Assembles reconstructed slices along the axial axis ($Z$) and binds the native $4 \times 4$ affine matrix and header.
+  - `SliceReassembler`: Re-projects predicted patch arrays onto zero-initialized $512 \times 512$ 2D slice grids (`reconstruct_image`).
+  - `NiftiVolumeBuilder`: Assembles reconstructed slices along the axial axis ($Z$) and binds the native $4 \times 4$ affine matrix and header (`construct_3d_image`).
+  - `SlicePreviewExporter`: Scales 2D prediction grids by 255 into 8-bit visual grayscale masks for thumbnail rendering (`construct_2d_image_and_return_image`).
 - **State Ownership**: Reconstructed volume file (`recon3d.nii`) and spatial evaluation scorecards (Validation Dice and IoU).
 
 ### 2.5 Clinical Presentation Context (`SpineImageSegmantaionUI`, `ImageSegmantationWebBackend`)
