@@ -1,0 +1,59 @@
+flowchart TB
+    subgraph DataIngestion ["1. Volumetric Data Ingestion"]
+        CT[/"Clinical 3D CT Scans (.nii / .nii.gz)"/]
+        Headers["Spatial Headers & 4x4 Affine Matrix"]
+    end
+
+    subgraph PreprocessingPipeline ["2. Biomedical Signal Preprocessing"]
+        Windowing["Hounsfield Unit Windowing [100, 1100 HU]"]
+        Median["3D Spatial Median Filtering (Radius=3)"]
+        Normalize["Dynamic Min-Max Radiodensity Normalization [0, 1]"]
+    end
+
+    subgraph PatchExtractionEngine ["3. Multi-Threaded Dataset Generator"]
+        ThreadTiler["ThreadPoolExecutor (16 Workers)"]
+        Slices["2D Axial Slices"]
+        Patches[/"128x128 Tiled Patches (Stride=32x32)<br/>>850,000 Samples in SpinePatchesDataset"/]
+    end
+
+    subgraph DeepLearningEngine ["4. PyTorch Deep Learning Pipeline"]
+        UNet["2D U-Net Architecture (Skip Connections)"]
+        LossFunc["Combined Loss: Dice Loss + Binary Cross-Entropy"]
+        Training["174.88h Training Convergence on NVIDIA GPUs"]
+        Metrics["Validation Dice: 99.14% | IoU: 98.30%"]
+    end
+
+    subgraph ReconstructionEngine ["5. 3D Volumetric Reconstruction"]
+        Stitching["Sliding-Window Reverse Patch Staging"]
+        OverlapVoting["Gaussian Weighted Overlap Blending"]
+        Morphology["3D Morphological Post-Processing"]
+        NiftiOut[/"Segmented 3D NIfTI Volume (recon3d.nii)"/]
+    end
+
+    subgraph ClinicalVisualization ["6. Clinical Web Review Suite"]
+        FlaskAPI["Decoupled Python / Flask Inference API"]
+        NodeBridge["Node.js / Express Session Service"]
+        ReactUI["React + Three.js / WebGL Volumetric Review UI"]
+        Radiologist(("Radiologist / Surgeon Reviewer"))
+    end
+
+    CT --> Headers
+    CT --> Windowing
+    Windowing --> Median
+    Median --> Normalize
+    Normalize --> Slices
+    Slices --> ThreadTiler
+    ThreadTiler --> Patches
+    Patches --> UNet
+    UNet --> LossFunc
+    LossFunc --> Training
+    Training --> Metrics
+    UNet --> Stitching
+    Stitching --> OverlapVoting
+    OverlapVoting --> Morphology
+    Headers -.-> Morphology
+    Morphology --> NiftiOut
+    NiftiOut --> FlaskAPI
+    FlaskAPI --> NodeBridge
+    NodeBridge --> ReactUI
+    ReactUI --> Radiologist

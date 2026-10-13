@@ -1,0 +1,45 @@
+flowchart TD
+    subgraph INPUT ["1. Raw Radiographic Input"]
+        RAW["Raw CT Scan (.nii / .nii.gz)<br/>512x512xZ Voxel Grid"]
+        INTENSITY["Uncalibrated Intensities<br/>(-1024 HU to +3071 HU)"]
+    end
+
+    subgraph SIGNAL_CLEANING ["2. Spatial Denoising & Filtering"]
+        LOAD["NiBabel Voxel Array Extraction<br/>(float64 array via get_fdata)"]
+        MEDIAN["3D Spatial Median Filter<br/>(scipy.ndimage.median_filter, size=2)"]
+    end
+
+    subgraph RADIODENSITY_WINDOW ["3. Hounsfield Unit Thresholding"]
+        HU_WINDOW["Bone Window Gate<br/>[100 HU <= Voxel <= 1100 HU]"]
+        SUPPRESS["Background Suppression<br/>(Soft Tissue < 100 HU & Metal > 1100 HU -> 0)"]
+    end
+
+    subgraph NORMALIZATION ["4. Intensity Rescaling"]
+        MIN_MAX["Min-Max Contrast Rescaling<br/>(Volume - Min) / (Max - Min) * 255"]
+        CAST["8-Bit Unsigned Conversion<br/>(uint8 grayscale array)"]
+    end
+
+    subgraph AXIAL_SLICING ["5. 2D Slice Decomposition"]
+        LOOP["Iterate Across Z-Axis<br/>(0 to Z-1 depth)"]
+        SLICES["Axial 2D Slices<br/>(512x512 uint8 matrices)"]
+        BLUR["Optional Edge Smoothing<br/>(cv2.GaussianBlur 3x3, sigma=0)"]
+    end
+
+    subgraph GROUND_TRUTH ["6. Ground Truth Processing"]
+        GT_RAW["Binary Segmentation Mask (.nii)"]
+        BINARIZE["Mask Binarization<br/>(Voxel > 0 -> 255 uint8)"]
+    end
+
+    RAW --> INTENSITY
+    INTENSITY --> LOAD
+    LOAD --> MEDIAN
+    MEDIAN --> HU_WINDOW
+    HU_WINDOW --> SUPPRESS
+    SUPPRESS --> MIN_MAX
+    MIN_MAX --> CAST
+    CAST --> LOOP
+    LOOP --> SLICES
+    SLICES --> BLUR
+
+    GT_RAW --> BINARIZE
+    BINARIZE --> LOOP

@@ -1,0 +1,56 @@
+flowchart TD
+    subgraph INPUT ["Input 2D Slices"]
+        SLICE_DATA["Axial Slice Array (512x512 uint8)"]
+        SLICE_LABEL["Ground Truth Mask (512x512 uint8)"]
+    end
+
+    subgraph CONFIG ["Tiling Configuration"]
+        PATCH_DIM["Patch Dimensions: 128x128 pixels"]
+        STRIDE_DIM["Sliding Stride: 32x32 pixels"]
+        GRID_CALC["Grid Calculation:<br/>((512 - 128) / 32) + 1 = 13 steps<br/>13 x 13 = 169 patches / slice"]
+    end
+
+    subgraph ENGINE ["ThreadPoolExecutor Worker Pool"]
+        SUBMIT["executor.submit(process_slice, ...)"]
+        WORKER_POOL["Parallel Worker Threads"]
+    end
+
+    subgraph BOUNDARY ["Sliding Window & Edge Clamping"]
+        INNER_LOOP["Nested Coordinate Loops (i, j)"]
+        CLAMP_Y["Clamp Y Overflow:<br/>if i + 128 > 512: i = 512 - 128"]
+        CLAMP_X["Clamp X Overflow:<br/>if j + 128 > 512: j = 512 - 128"]
+        CROP["Sub-array Slicing:<br/>patch = image[i:i+128, j:j+128]"]
+    end
+
+    subgraph SYNCHRONIZATION ["Thread-Safe Mutex Lock"]
+        MUTEX["threading.Lock() Acquisition"]
+        COUNTER["Local Counter Indexing:<br/>local_count = global_count<br/>global_count += len(data_patches)"]
+        RELEASE["Mutex Lock Release"]
+    end
+
+    subgraph PERSISTENCE ["Disk Persistence & Dataset Storage"]
+        WRITE_DATA["cv2.imwrite(data_patch_N.png)"]
+        WRITE_LABEL["cv2.imwrite(label_patch_N.png)"]
+        DATASET["SpinePatchesDataset5 Repository<br/>(>850,000 Paired PNG Patches)"]
+    end
+
+    SLICE_DATA --> SUBMIT
+    SLICE_LABEL --> SUBMIT
+    PATCH_DIM --> GRID_CALC
+    STRIDE_DIM --> GRID_CALC
+    GRID_CALC --> SUBMIT
+
+    SUBMIT --> WORKER_POOL
+    WORKER_POOL --> INNER_LOOP
+    INNER_LOOP --> CLAMP_Y
+    CLAMP_Y --> CLAMP_X
+    CLAMP_X --> CROP
+
+    CROP --> MUTEX
+    MUTEX --> COUNTER
+    COUNTER --> RELEASE
+
+    RELEASE --> WRITE_DATA
+    RELEASE --> WRITE_LABEL
+    WRITE_DATA --> DATASET
+    WRITE_LABEL --> DATASET
