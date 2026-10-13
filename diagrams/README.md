@@ -6,7 +6,7 @@ This directory contains standalone, reusable Mermaid diagram source files for th
 
 - [System Context](system-context.mmd) — High-level pipeline from raw CT volumes to clinical WebGL rendering.
 - [Preprocessing Pipeline](preprocessing-pipeline.mmd) — HU windowing, spatial median filtering, and dynamic normalization.
-- [Patch Extraction Flow](patch-extraction-flow.mmd) — Multi-threaded 2D axial tiling generating >850,000 training patches.
+- [Patch Extraction Flow](patch-extraction-flow.mmd) — Multi-threaded 2D axial tiling generating 482,833 training patches.
 - [U-Net Architecture](unet-architecture.mmd) — Contracting encoder, expansive decoder, and identity skip connection topology.
 - [3D Reconstruction & Evaluation](reconstruction-and-evaluation.mmd) — Sliding-window reverse patch stitching, Gaussian overlap blending, and Dice/IoU evaluation.
 

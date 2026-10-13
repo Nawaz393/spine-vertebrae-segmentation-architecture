@@ -61,7 +61,7 @@ Where $K_{x,y}$ is the set of all patches covering pixel $(x, y)$. Averaging ove
 
 ## 3. 3D Morphological Post-Processing
 
-Even with a high-accuracy neural network (99.14% Dice), raw predictions can exhibit minor artifacts:
+Even with high empirical segmentation performance (88.46% Dice, 83.26% Jaccard, 98.46% classification accuracy), raw predictions can exhibit minor artifacts:
 1. **Isolated Floating False-Positives**: Tiny spurious voxel clusters appearing in dense muscular regions or noisy air cavities.
 2. **Hollow Marrow Voids**: Trabecular bone with low radiodensity occasionally yielding interior holes within the vertebral body.
 

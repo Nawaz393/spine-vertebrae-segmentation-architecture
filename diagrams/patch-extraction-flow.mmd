@@ -31,7 +31,7 @@ flowchart TD
     subgraph PERSISTENCE ["Disk Persistence & Dataset Storage"]
         WRITE_DATA["cv2.imwrite(data_patch_N.png)"]
         WRITE_LABEL["cv2.imwrite(label_patch_N.png)"]
-        DATASET["SpinePatchesDataset5 Repository<br/>(>850,000 Paired PNG Patches)"]
+        DATASET["Dataset Repository<br/>(482,833 Paired Patches: 386,266 Train / 96,567 Val)"]
     end
 
     SLICE_DATA --> SUBMIT

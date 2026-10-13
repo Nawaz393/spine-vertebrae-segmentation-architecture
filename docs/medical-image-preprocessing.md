@@ -1,41 +1,48 @@
-# Medical Image Preprocessing & Radiographic Physics
+# Medical Image Preprocessing & Radiographic Filtering
 
 [← Main README](../README.md) · [← Architecture Guide](architecture.md) · [← Deep Learning Guide](deep-learning-and-training.md)
 
-This deep dive examines the biomedical signal processing principles, CT physics, radiodensity calibrations, and spatial tiling algorithms that underpin the preprocessing pipeline in `PreProcessing.py` and `mPreprocessing.py`.
+This document details the multi-stage biomedical preprocessing pipeline that prepares clinical Computed Tomography (CT) scans for deep learning vertebrae segmentation.
 
 ---
 
-## 1. Computed Tomography Physics & The Hounsfield Unit Scale
+## 1. Radiographic Preprocessing Pipeline
 
-Computed Tomography (CT) measures the linear X-ray attenuation coefficient ($\mu$) of anatomical tissues as an X-ray beam traverses the human body. To establish manufacturer-agnostic calibration across scanner hardware (GE, Siemens, Philips, Toshiba), raw attenuation values are normalized relative to distilled water and air under standard temperature and pressure into **Hounsfield Units (HU)**:
+Clinical CT scans present substantial noise, varying scanner intensity ranges, and low contrast between vertebrae and adjacent soft tissues or non-vertebral bones. To produce standardized, high-quality inputs for the neural network, our methodology implements a four-step sequence:
 
-$$HU = 1000 \times \frac{\mu_{\text{tissue}} - \mu_{\text{water}}}{\mu_{\text{water}} - \mu_{\text{air}}}$$
+```mermaid
+flowchart LR
+    A["Raw 3D CT Volume"] --> B["1. Normalization [0, 255]"]
+    B --> C["2. 2D Slicing (512x512)"]
+    C --> D["3. Thresholding (< 63 -> 0)"]
+    D --> E["4. 3x3 Gaussian Filtering"]
+    E --> F["Preprocessed 2D Slices"]
+```
 
-### Radiodensity Spectrum Across Human Tissues
+### Step 1: Volume Normalization to $[0, 255]$
+The volumetric CT scan is first scaled and normalized to a standardized integer range of $[0, 255]$. This standardizes intensity distributions across different scanner manufacturers (Siemens, GE, Philips) and imaging protocols.
 
-| Tissue Type | Radiodensity Range (HU) | Radiographic Appearance | Preprocessing Treatment in Pipeline |
-|---|---|---|---|
-| **Air** | $-1000\text{ HU}$ | Absolute black | Suppressed to `0` |
-| **Lung Parenchyma** | $-600\text{ to } -400\text{ HU}$ | Dark gray | Suppressed to `0` |
-| **Fat / Adipose Tissue** | $-120\text{ to } -60\text{ HU}$ | Dark gray | Suppressed to `0` |
-| **Water / CSF** | $0\text{ to } +15\text{ HU}$ | Medium dark gray | Suppressed to `0` |
-| **Soft Tissue & Paraspinal Muscle** | $+35\text{ to } +55\text{ HU}$ | Intermediate gray | Suppressed to `0` ($<100\text{ HU}$ cutoff) |
-| **Cartilage & Intervertebral Discs** | $+50\text{ to } +90\text{ HU}$ | Light gray | Suppressed to `0` ($<100\text{ HU}$ cutoff) |
-| **Trabecular (Cancellous) Bone** | $+150\text{ to } +400\text{ HU}$ | Porous white | **Retained in Bone Window** |
-| **Cortical (Compact) Bone** | $+700\text{ to } +1500\text{ HU}$ | Bright hyperdense white | **Retained in Bone Window** (capped at 1100 HU) |
-| **Dental Implants & Surgical Hardware** | $>+2000\text{ to } +3000\text{ HU}$ | Saturated flare artifacts | Suppressed to `0` ($>1100\text{ HU}$ cutoff) |
+### Step 2: Conversion to $512 \times 512$ 2D Slices
+The 3D volumetric array is sliced along the axial plane into discrete 2D images with dimensions of $512 \times 512$ pixels. This slice-based representation enables manageable memory allocation and parallelized patch generation.
+
+### Step 3: Intensity Thresholding ($< 63 \rightarrow 0$)
+Surrounding anatomical structures—such as paraspinal muscles, adipose tissue, internal viscera, and ambient air—exhibit low radiodensity relative to bone.
+- All pixels with intensity values below **63** are clamped to **0** (background).
+- This thresholding effectively isolates dense bone structures while suppressing non-osseous noise.
+
+### Step 4: Spatial Gaussian Filtering ($3 \times 3$ Kernel)
+To refine boundary edges and eliminate high-frequency scanner noise, a Gaussian filter with a **$3 \times 3$ kernel** is applied across the 2D slices. This smooths voxel intensity transitions and controls noisy pixels without blurring critical cortical bone contours.
 
 ---
 
 ## 2. Radiographic Challenges in Spinal Vertebrae Imaging
 
-Segmenting the full vertebral column (cervical, thoracic, and lumbar vertebrae) presents four distinct radiographic failure modes for traditional computer vision:
+Segmenting the full vertebral column (cervical, thoracic, and lumbar vertebrae) presents four distinct failure modes for classical computer vision:
 
 1. **Intra-Vertebral Density Heterogeneity**:
-   - Every vertebra consists of an outer shell of hyperdense **cortical bone** ($>700\text{ HU}$) encasing a porous core of **trabecular bone** ($150–350\text{ HU}$). Simple intensity thresholding creates hollow "donut" masks that fail to segment the vertebral body, pedicles, and spinous processes.
+   - Every vertebra consists of an outer shell of hyperdense **cortical bone** encasing a porous core of **trabecular bone**. Simple global thresholding creates hollow "donut" masks that miss the vertebral body, pedicles, and spinous processes.
 2. **Neighboring Rib & Pelvic Bony Contiguity**:
-   - In thoracic slices, ribs articulate directly with transverse processes and costal facets. In lumbar and sacral regions, the spine connects to the pelvis. These adjacent non-vertebral bones exhibit identical radiodensity ($>800\text{ HU}$), defeating connected-component algorithms.
+   - In thoracic slices, ribs articulate directly with transverse processes and costal facets. In lumbar and sacral regions, the spine connects to the pelvis. These adjacent non-vertebral bones exhibit identical radiodensity, defeating naive connected-component algorithms.
 3. **Beam Hardening & Metallic Artifacts**:
    - High-density surgical pedicle screws, titanium cages, dental amalgams, and dense shoulder musculature cause photon starvation, producing severe streak artifacts across spinal scans.
 4. **Partial Volume Effects**:
@@ -43,9 +50,9 @@ Segmenting the full vertebral column (cervical, thoracic, and lumbar vertebrae) 
 
 ---
 
-## 3. The Bone Windowing Strategy: $[100, 1100]\text{ HU}$
+## 3. Advanced Hounsfield Calibration $[100, 1100]\text{ HU}$
 
-To isolate spinal bony tissue while rejecting noise and surrounding anatomy, the preprocessing engine applies a calibrated radiodensity window:
+In addition to $[0, 255]$ scaling, the codebase (`PreProcessing.py`) supports native physical Hounsfield Unit (HU) windowing:
 
 ```python
 # Radiodensity windowing formulation (PreProcessing.py)
@@ -54,68 +61,29 @@ max_hu = 1100
 volume = np.where((volume >= min_hu) & (volume <= max_hu), volume, 0)
 ```
 
+- **Lower Gate ($100\text{ HU}$)**: Completely eliminates paraspinal muscle ($50–65\text{ HU}$) and fluid while preserving low-density trabecular bone ($>120\text{ HU}$).
+- **Upper Gate ($1100\text{ HU}$)**: Normal cortical bone rarely exceeds $1050\text{ HU}$. Capping at $1100\text{ HU}$ eliminates extreme metallic hardware flares that would otherwise distort min-max normalization.
+
+---
+
+## 4. Patch Extraction Module (PE-Module)
+
+Once slices are preprocessed, the **PE-Module** extracts $128 \times 128$ overlapping patches using a **32-pixel stride**:
+
 ```mermaid
-flowchart LR
-    A["Raw CT Voxel<br/>[-1024, +3071 HU]"] --> B{"Voxel Value?"}
-    B -->|"< 100 HU (Soft tissue, fat, air)"| C["Set to 0<br/>(Background)"]
-    B -->|"100 <= HU <= 1100 (Bone window)"| D["Preserve Intensity<br/>(Bone Matrix)"]
-    B -->|"> 1100 HU (Metal, dental hardware)"| E["Set to 0<br/>(Artifact Suppression)"]
+flowchart TD
+    SLICE["Normalized 512x512 Slice"] --> TILING["Sliding Window Tiler (128x128, Stride 32)"]
+    TILING --> P1["Patch (0, 0)"]
+    TILING --> P2["Patch (0, 32)"]
+    TILING --> P3["Patch (0, 64)"]
+    TILING --> PN["Patch (x, y) ..."]
+    PN --> POOL["Dataset Repository (482,833 Total Patches)"]
 ```
 
-### Rationale for Window Boundaries:
-- **Lower Threshold ($100\text{ HU}$)**:
-  - Dense paraspinal muscles (trapezius, sternocleidomastoid, scalenes) peak around $50–65\text{ HU}$. Setting the gate at $100\text{ HU}$ completely eliminates muscular tissue and spinal cord dura while capturing low-density trabecular bone in osteoporosis patients ($>120\text{ HU}$).
-- **Upper Threshold ($1100\text{ HU}$)**:
-  - Normal spinal cortical bone rarely exceeds $1000–1050\text{ HU}$. Voxels exceeding $1100\text{ HU}$ almost exclusively originate from metallic hardware (pedicle screws, dental crowns) or severe X-ray scatter streaks. Capping at $1100\text{ HU}$ prevents extreme outlier values from skewing min-max normalization.
+### Dataset Partitioning:
+- **Total Patches**: **482,833**
+- **Training Set (80%)**: **386,266 patches**
+- **Validation Set (20%)**: **96,567 patches**
+- **Independent Test Sets**: **5 patient volumes (3,418 slices)**
 
----
-
-## 4. 3D Spatial Denoising via Median Filtering
-
-Prior to windowing, raw CT arrays undergo a **3D median filter** with kernel dimension $2 \times 2 \times 2$:
-
-$$\text{Filtered}(x, y, z) = \text{median}\left\{ I(x + \Delta x, y + \Delta y, z + \Delta z) \mid \Delta x, \Delta y, \Delta z \in \{0, 1\} \right\}$$
-
-### Why Median Filtering over Gaussian Smoothing?
-- **Gaussian Blurring** computes a weighted spatial average, which smears the razor-sharp cortical boundaries of the vertebral lamina and transverse processes, reducing spatial contrast.
-- **Median Filtering** is an edge-preserving non-linear filter that removes Poisson quantum mottle noise (high-frequency single-voxel spikes) without softening sharp cortical bone gradients.
-
----
-
-## 5. Min-Max Contrast Normalization
-
-Following bone windowing, voxel intensities are rescaled into standard dynamic ranges:
-
-$$\bar{I}(x, y, z) = \frac{I(x, y, z) - I_{\min}}{I_{\max} - I_{\min}} \times 255$$
-
-This step maps bone intensities uniformly into $[0, 255]$ `uint8` arrays (or $[0, 1]$ `float32` tensors during inference). Min-max normalization eliminates variance in base attenuation caused by different scanner tube voltages ($80\text{ kVp}$, $100\text{ kVp}$, $120\text{ kVp}$), guaranteeing that the U-Net receives standardized input distributions.
-
----
-
-## 6. High-Throughput Concurrent Patch Generation
-
-Full $512 \times 512 \times Z$ volumes cannot be loaded into commodity GPU memory without downsampling. Downsampling a CT scan from $512 \times 512$ to $256 \times 256$ destroys critical sub-millimeter anatomical structures (vertebral foramen, transverse foramina through which the vertebral artery passes).
-
-To maintain **100% native spatial resolution ($512 \times 512$)**, the pipeline decomposes each axial slice into overlapping $128 \times 128$ spatial patches:
-
-### Mathematical Tiling Formulation
-For a 2D slice of dimensions $H \times W = 512 \times 512$, patch size $P_h \times P_w = 128 \times 128$, and stride $S_h \times S_w = 32 \times 32$:
-
-$$N_y = \left\lfloor \frac{H - P_h}{S_h} \right\rfloor + 1 = \left\lfloor \frac{512 - 128}{32} \right\rfloor + 1 = 12 + 1 = 13$$
-
-$$N_x = \left\lfloor \frac{W - P_w}{S_w} \right\rfloor + 1 = \left\lfloor \frac{512 - 128}{32} \right\rfloor + 1 = 12 + 1 = 13$$
-
-$$N_{\text{patches}} = N_y \times N_x = 13 \times 13 = 169\text{ patches per axial slice}$$
-
-### Edge Clamping Mechanism
-To prevent missing perimeter anatomy when coordinate steps exceed image boundaries, the extractor applies coordinate clamping:
-```python
-if i + patch_size[0] > height:
-    i = height - patch_size[0]
-if j + patch_size[1] > width:
-    j = width - patch_size[1]
-```
-
-Across the 5,030 total volumetric slices in the dataset, this concurrent generator produced **$>850,000$ paired training patches** (`SpinePatchesDataset5`), providing an exceptionally rich spatial dataset for deep learning convergence.
-
-Related: [Architecture Guide](architecture.md) · [Deep Learning & Training](deep-learning-and-training.md) · [ADR 002: HU Windowing](decisions/002-hounsfield-windowing-strategy.md)
+Related: [Architecture](architecture.md) · [Deep Learning Results](deep-learning-and-training.md) · [3D Reconstruction](3d-volumetric-reconstruction.md)

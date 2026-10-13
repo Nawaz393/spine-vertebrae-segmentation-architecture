@@ -1,99 +1,127 @@
 # 3D Spine CT Vertebrae Segmentation & Volumetric Reconstruction
 
-An end-to-end deep learning system for high-resolution anatomical segmentation and 3D volumetric reconstruction of the human vertebral column (full spine) from clinical Computed Tomography (CT) scans.
+An end-to-end deep learning system for high-resolution anatomical segmentation and 3D volumetric reconstruction of the human vertebral column (full spine) from clinical Computed Tomography (CT) scans using an overlapping patch-based U-Net architecture.
 
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
 ![Medical Imaging](https://img.shields.io/badge/CT_Imaging-NIfTI_%7C_DICOM-00A4E4)
-![Architecture](https://img.shields.io/badge/Model-2D_U--Net_%2B_3D_Stitching-FF6F00)
-![Validation Dice](https://img.shields.io/badge/Validation_Dice-99.14%25-brightgreen)
-![Mean IoU](https://img.shields.io/badge/Mean_IoU-98.30%25-brightgreen)
-![Dataset Scale](https://img.shields.io/badge/Patches->850k_Samples-blue)
-![Frontend](https://img.shields.io/badge/UI-React_%7C_Three.js-61DAFB?logo=react&logoColor=black)
+![Architecture](https://img.shields.io/badge/Model-Patch--Based_U--Net-FF6F00)
+![Dice Score](https://img.shields.io/badge/Dice_Similarity_(DSC)-88.46%25-brightgreen)
+![Jaccard Index](https://img.shields.io/badge/Jaccard_(IoU)-83.26%25-brightgreen)
+![Sensitivity](https://img.shields.io/badge/Sensitivity-93.81%25-brightgreen)
+![BF-Score](https://img.shields.io/badge/Boundary_F1-91.01%25-brightgreen)
+![Patch Classification](https://img.shields.io/badge/Classification_Acc-98.46%25-blue)
 
 ---
 
 ## What This Project Does
 
-Segmenting the human spine from CT scans is one of the hardest problems in medical computer vision. A full vertebral column encompasses distinct anatomical regions—from the upper neck down through the thoracic cage and lumbar lower back. Vertebrae change in size and morphology dramatically, cortical bone thickness varies, bone density drops in trabecular centers, and clinical scans are packed with noise, metal hardware streaks, and soft tissue.
+Accurately segmenting individual vertebrae from clinical CT scans is an essential prerequisite for surgical planning, biomechanical modeling, and diagnosing spinal pathologies such as scoliosis, kyphosis, spondylolisthesis, vertebral fractures, and tumors. However, spine CT imaging presents major computer vision challenges:
+- **High Computational Burden**: Direct 3D convolutional networks require massive GPU memory to process full $512 \times 512 \times Z$ volumes at native resolution, forcing most existing approaches to downsample images and lose fine trabecular and cortical bone boundaries.
+- **Radiodensity Overlap**: Vertebrae share identical radiographic densities with adjacent bony anatomy (such as ribs in thoracic scans and the pelvis in lumbosacral scans).
+- **Intra-Vertebral Density Variation**: A single vertebra consists of a dense outer cortical shell enclosing a porous, low-density trabecular core. Simple intensity thresholding produces hollow "donut" artifacts.
 
-Instead of relying on fragile manual contouring by radiologists (which takes hours per patient), this project automates the entire pipeline:
-
-1. **Ingests raw 3D CT volumes** in clinical NIfTI (`.nii` / `.nii.gz`) format, preserving original physical scanner coordinates and affine matrices.
-2. **Filters and windows radiographic density** using a customized $[+100, +1100]\text{ HU}$ Hounsfield range and 3D spatial median filtering to isolate bone from muscle, fat, and air.
-3. **Generates an augmented dataset of over 850,000 patches** using a multi-threaded sliding-window generator ($128 \times 128$ patches with $32 \times 32$ stride) to preserve sub-millimeter trabecular detail without running out of GPU memory.
-4. **Trains a high-capacity U-Net** using a hybrid Dice Loss + Binary Cross-Entropy loss over 174.88 GPU hours, achieving **99.14% validation Dice** and **98.30% mean IoU**.
-5. **Reassembles 2D patch predictions back into cohesive 3D volumes** with Gaussian overlap blending and morphological hole-filling, exporting ready-to-use 3D segmentations (`recon3d.nii`).
-6. **Delivers an interactive web review interface** built with Python/Flask, Node.js, and React + Three.js, allowing clinicians to inspect multi-planar 2D slices and rotate full 3D vertebral meshes directly in the browser.
+This project implements a complete, validated medical deep learning pipeline:
+1. **Multi-Stage Radiographic Preprocessing**: Normalizes CT volumes into $[0, 255]$, extracts $512 \times 512$ axial slices, applies intensity thresholding (eliminating voxels $<63$ to remove air and soft tissue), and executes $3 \times 3$ Gaussian filtering to suppress imaging noise.
+2. **Overlapping Patch Extraction**: Tiles 2D slices into $128 \times 128$ overlapping patches with a **32-pixel stride**, compiling a rich dataset of **482,833 patches** (386,266 training / 96,567 validation) that preserves localized context without global GPU downsampling.
+3. **Optimized U-Net Architecture**: Trains an encoder-decoder network using **AdamW** (initial learning rate $0.0003$, batch size $128$) with **Binary Cross-Entropy with Logits (`BCELogitLoss`)**, converging at **Epoch 15** over ~48 hours of compute.
+4. **Benchmark-Beating Segmentation**: Evaluated across **5 test patient cases containing 3,418 slices**, achieving **88.46% Dice**, **83.26% Jaccard Index**, **91.01% BF-score**, and **93.81% Sensitivity**, outperforming 8 state-of-the-art segmentation networks (including standard U-Net, D-TVNet, SpineParseNet, MultiResUNet, PaDBN, ResNet, and DenseNet).
+5. **3D Volumetric Reassembly & Clinical Web Workstation**: Reverse-stitches predicted patch probabilities into full $512 \times 512$ masks with 3D morphological post-processing, re-attaches native scanner affine transformation headers (`recon3d.nii`), and serves an interactive React + Three.js viewer for radiologist multi-planar review and pre-operative 3D surgical printing.
 
 ---
 
-## Key Performance & Verification Numbers
+## Audited Experimental Results & Research Scorecard
 
-| Metric | Measured Value | Practical Engineering Context |
+### 1. Patch-Based Classification Performance
+Across 482,833 total patches (80% train / 20% validation split):
+
+| Metric | Measured Score | Clinical & Algorithmic Significance |
 |---|---|---|
-| **Validation Dice Score** | **99.14%** | Exceptional overlap matching radiologist consensus annotations |
-| **Mean Intersection over Union (IoU)** | **98.30%** | Tight spatial boundary agreement across cortical edges |
-| **Dataset Scale** | **>850,000 patches** | Overcomes severe class imbalance between bone and background |
-| **Training Duration** | **174.88 hours** | Stable, monotonic loss convergence across NVIDIA GPU compute |
-| **Hounsfield Window** | **[100, 1100] HU** | Cleanly removes surrounding soft tissue while preserving trabecular bone |
-| **Patch Geometry** | **128×128 (stride 32×32)** | High localized receptive field without global GPU downsampling |
+| **Accuracy (ACC)** | **98.46%** | Extremely high overall correctness across bone vs. background patches |
+| **Specificity (SPE)** | **98.51%** | Outstanding background rejection; prevents false-positive bone labeling |
+| **Precision (PRE)** | **88.37%** | Minimizes false-positive boundaries in ambiguous soft-tissue regions |
+| **F-Score / F1** | **88.46%** | Robust harmonic balance between precision and recall |
+
+### 2. Full-Volume Segmentation Performance (5 Test Cases / 3,418 Slices)
+
+| Metric | Measured Score | Practical Definition |
+|---|---|---|
+| **Sensitivity (SEN / Recall)** | **93.81%** | Proportion of true vertebral bone pixels correctly identified |
+| **Boundary F-Score (BF-score)** | **91.01%** | Precision alignment between predicted and ground-truth bone contours |
+| **Dice Similarity Coefficient (DSC)** | **88.46%** | Spatial volume overlap ($2 |A \cap B| / (|A| + |B|)$) |
+| **Jaccard Index (JAC / IoU)** | **83.26%** | Intersection over Union ($|A \cap B| / |A \cup B|$) |
 
 ---
 
-## End-to-End System Pipeline
+## State-of-the-Art Comparative Benchmark 
+Direct empirical comparison against established medical segmentation and classification networks evaluated under identical criteria:
+
+| Category | Model Architecture | Sensitivity (SEN %) | BF-Score (%) | Jaccard (JAC %) | Dice (DSC %) |
+|---|---|:---:|:---:|:---:|:---:|
+| **Segmentation Networks** | Standard U-Net (Ronneberger et al.) | 79.40 | 81.40 | 71.90 | 83.70 |
+| | D-TVNet (Lyu et al.) | 84.90 | 78.20 | 76.50 | 86.70 |
+| | SpineParseNet (Cheng et al.) | 88.00 | 87.60 | 77.50 | 87.30 |
+| | MultiResUNet | 87.50 | 89.10 | 73.80 | 84.90 |
+| **Classification-Based Segmentation** | PaDBN (Qadri et al.) | 89.70 | 84.90 | 75.60 | 86.10 |
+| | VGG Net (Simonyan & Zisserman) | 90.10 | 78.80 | 70.00 | 81.90 |
+| | ResNet (He et al.) | 85.40 | 83.70 | 73.20 | 84.50 |
+| | DenseNet (Huang et al.) | 77.90 | 80.00 | 77.60 | 87.40 |
+| **Proposed Method** | **Patch-Based U-Net (Ours)** | **93.81%** | **91.01%** | **83.26%** | **88.46%** |
+
+*Our proposed framework outperforms the baseline standard U-Net by **+4.76% in Dice** and **+11.36% in Jaccard Index**, while surpassing advanced architectures like SpineParseNet (+1.16% Dice, +5.76% IoU).*
+
+---
+
+## System Pipeline Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Step1 ["1. Data Ingestion & Geometry"]
-        RAW[/"Raw 3D CT Volume (.nii)"/] --> AFFINE["Preserve 4x4 Affine Matrix & Voxel Spacing"]
+    subgraph Step1 ["1. Radiographic Preprocessing"]
+        RAW[/"Raw 3D CT Scan (.nii)"/] --> NORM["Normalize to [0, 255] Range"]
+        NORM --> SLICE["Slice into 512x512 2D Axial Images"]
+        SLICE --> THRESH["Threshold Filter (Set pixels < 63 to 0)"]
+        THRESH --> GAUSS["3x3 Gaussian Spatial Smoothing Filter"]
     end
 
-    subgraph Step2 ["2. Radiographic Preprocessing"]
-        RAW --> HU["Hounsfield Windowing [100, 1100 HU]"]
-        HU --> MEDIAN["3D Spatial Median Filter (Radius=3)"]
-        MEDIAN --> NORM["Dynamic Min-Max Normalization [0.0, 1.0]"]
+    subgraph Step2 ["2. Patch Extraction (PE-Module)"]
+        GAUSS --> PE["Sliding Window Tiler (128x128, Stride=32)"]
+        PE --> DATASET[/"482,833 Total Patches<br/>(386,266 Train / 96,567 Val)"/]
     end
 
-    subgraph Step3 ["3. Multi-Threaded Dataset Generator"]
-        NORM --> SLICES["Extract 2D Axial Slices"]
-        SLICES --> POOL["ThreadPoolExecutor (16 Workers)"]
-        POOL --> TILES[/"128x128 Sliding Patches (Stride=32x32)<br/>>850,000 Samples in SpinePatchesDataset"/]
+    subgraph Step3 ["3. Deep Learning Training & Inference"]
+        DATASET --> UNET["2D U-Net (Encoder-Decoder + Skip Connections)"]
+        UNET --> OPTIM["AdamW Optimizer (LR=0.0003, Batch=128)"]
+        OPTIM --> LOSS["BCELogitLoss Objective Function"]
+        LOSS --> CHECKPOINT["Optimal Checkpoint at Epoch 15 (~48h Compute)"]
+        CHECKPOINT --> INFER["Patch Probability Predictions"]
     end
 
-    subgraph Step4 ["4. PyTorch U-Net Inference Engine"]
-        TILES --> UNET["2D U-Net (Skip Connections)"]
-        UNET --> LOSS["Hybrid Loss: Dice + Binary Cross-Entropy"]
-        LOSS --> PREDS["Patch Probability Maps"]
+    subgraph Step4 ["4. 3D Volumetric Reassembly"]
+        INFER --> STITCH["Coordinate Reverse Patch Mapper (512x512 Canvas)"]
+        STITCH --> MORPH["3D Morphological Filtering & Dilation"]
+        MORPH --> RECON[/"Reconstructed 3D Volume (recon3d.nii)"/]
+        RAW -.->|"Preserve Native Affine & Spacing"| RECON
     end
 
-    subgraph Step5 ["5. 3D Volumetric Reassembly"]
-        PREDS --> STITCH["Sliding-Window Reverse Patch Staging"]
-        STITCH --> GAUSS["Gaussian Overlap Blending"]
-        GAUSS --> MORPH["3D Morphological Filtering & Dilation"]
-        AFFINE -.-> NIFTI_OUT[/"Segmented 3D NIfTI Volume (recon3d.nii)"/]
-        MORPH --> NIFTI_OUT
-    end
-
-    subgraph Step6 ["6. Interactive Web Review UI"]
-        NIFTI_OUT --> FLASK["Python / Flask Volumetric API"]
-        FLASK --> NODE["Node.js / Express Session Gateway"]
-        NODE --> REACT["React + Three.js / WebGL Volumetric Review UI"]
+    subgraph Step5 ["5. Clinical Web Review"]
+        RECON --> FLASK["Python / Flask Volumetric API"]
+        FLASK --> NODE["Node.js / Express Session Service"]
+        NODE --> REACT["React + Three.js Clinical Visualizer (SpineImageSegmantaionUI)"]
     end
 ```
 
 ---
 
-## Why Patch-Based Tiling Instead of a 3D U-Net?
+## Training Hyperparameters & Convergence Dynamics
 
-A common question is: *Why not feed the whole 3D CT scan directly into a 3D U-Net?*
-
-In practice, a full-spine CT scan easily runs $512 \times 512 \times 400+$ voxels. Passing an entire volume into a 3D convolutional network requires massive GPU memory (>48GB VRAM) just to run a batch size of 1. To make it fit, teams are usually forced to downsample the volume by $2\times$ or $4\times$, which destroys the exact sub-millimeter bone edges and trabecular structures surgeons rely on for surgical planning.
-
-By tiling slices into overlapping $128 \times 128$ patches with a $32 \times 32$ stride:
-- Every patch retains full native scanner resolution.
-- We generate a massive training dataset of **>850,000 diverse samples**, preventing overfitting.
-- Inference runs reliably on standard workstation GPUs.
-- Sliding-window Gaussian blending stitches the predictions back into the original 3D matrix seamlessly without visible seam artifacts.
+- **Mini-Batch Size**: 128
+- **Initial Learning Rate**: $0.0003$ ($3 \times 10^{-4}$) with adaptive decay
+- **Optimizer**: AdamW with zero bias initialization
+- **Loss Objective**: Binary Cross-Entropy with Logits (`BCELogitLoss`)
+- **Total Epochs**: 20 epochs
+- **Optimal Checkpoint**: **Epoch 15** (subsequent epochs showed slight validation loss increase, identifying epoch 15 as the global minimum)
+- **Patch Resolution**: $128 \times 128$ pixels
+- **Sliding Stride**: 32 pixels
+- **Compute Hardware**: Google Cloud v3-8 TPU runtime (~48 wall-clock training hours)
 
 ---
 
@@ -101,28 +129,14 @@ By tiling slices into overlapping $128 \times 128$ patches with a $32 \times 32$
 
 | Topic | Description | Link |
 |---|---|---|
-| **System Architecture** | Pipeline lifecycle, memory considerations, and decoupled inference server | [Architecture](docs/architecture.md) |
+| **System Architecture** | Request lifecycle, memory boundaries, and decoupled inference server | [Architecture](docs/architecture.md) |
 | **Domain Map** | System decomposition, data contracts, and component responsibilities | [Domain Map](docs/domain-map.md) |
-| **Production Code Examples** | NiBabel loading, HU windowing, PyTorch U-Net, and 3D reconstructor | [Code Examples](docs/code-examples.md) |
-| **Radiographic Preprocessing** | CT physics, Hounsfield units, bone contrast, and artifact removal | [Medical Preprocessing](docs/medical-image-preprocessing.md) |
-| **Deep Learning & Training** | U-Net architecture, combined loss formulation, and 174h training dynamics | [Deep Learning & Training](docs/deep-learning-and-training.md) |
-| **3D Volumetric Reconstruction** | Reverse patch stitching, Gaussian weighting, and affine preservation | [3D Reconstruction](docs/3d-volumetric-reconstruction.md) |
-| **Architecture Decision Records** | Key engineering decisions, trade-offs, and rejected alternatives | [ADRs](docs/decisions/README.md) |
+| **Production Code Examples** | Preprocessing, patch tiler, U-Net architecture, and 3D reconstructor | [Code Examples](docs/code-examples.md) |
+| **Radiographic Preprocessing** | CT physics, $[0, 255]$ scaling, thresholding, and Gaussian filtering | [Medical Preprocessing](docs/medical-image-preprocessing.md) |
+| **Deep Learning & Results** | Concrete formulas, Table 2 benchmark analysis, and convergence curves | [Deep Learning & Training](docs/deep-learning-and-training.md) |
+| **3D Volumetric Reconstruction** | Reverse coordinate stitching, morphological filtering, and NIfTI export | [3D Reconstruction](docs/3d-volumetric-reconstruction.md) |
+| **Architecture Decision Records** | Key engineering decisions, trade-offs, and alternatives | [ADRs](docs/decisions/README.md) |
 | **Reusable Diagrams** | Standalone Mermaid source files for all pipeline diagrams | [Diagrams](diagrams/README.md) |
-
----
-
-## Technology Stack
-
-| Area | Technologies |
-|---|---|
-| **Deep Learning Framework** | PyTorch, torchvision, CUDA 12, cuDNN |
-| **Medical Volume Processing** | NiBabel, SimpleITK, NumPy, SciPy |
-| **Image Tiling & Augmentation** | OpenCV (cv2), PIL, multi-threaded `ThreadPoolExecutor` |
-| **Inference Microservice** | Python 3.11, Flask, Gunicorn |
-| **Gateway & Session Layer** | Node.js 20, Express, JWT |
-| **Clinical Web Workstation** | React 18, Vite, Three.js, WebGL, Tailwind CSS |
-| **Experiment Tracking** | TensorBoard, Matplotlib, PyVista |
 
 ---
 

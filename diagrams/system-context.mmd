@@ -13,14 +13,14 @@ flowchart TB
     subgraph PatchExtractionEngine ["3. Multi-Threaded Dataset Generator"]
         ThreadTiler["ThreadPoolExecutor (16 Workers)"]
         Slices["2D Axial Slices"]
-        Patches[/"128x128 Tiled Patches (Stride=32x32)<br/>>850,000 Samples in SpinePatchesDataset"/]
+        Patches[/"128x128 Tiled Patches (Stride=32)<br/>482,833 Total Patches (80% Train / 20% Val)"/]
     end
 
     subgraph DeepLearningEngine ["4. PyTorch Deep Learning Pipeline"]
         UNet["2D U-Net Architecture (Skip Connections)"]
-        LossFunc["Combined Loss: Dice Loss + Binary Cross-Entropy"]
-        Training["174.88h Training Convergence on NVIDIA GPUs"]
-        Metrics["Validation Dice: 99.14% | IoU: 98.30%"]
+        LossFunc["Loss Function: BCELogitLoss (AdamW, lr=0.0003)"]
+        Training["48h Cloud TPU v3-8 Convergence (Epoch 15 Optimum)"]
+        Metrics["Dice (DSC): 88.46% | Jaccard (IoU): 83.26% | Acc: 98.46%"]
     end
 
     subgraph ReconstructionEngine ["5. 3D Volumetric Reconstruction"]

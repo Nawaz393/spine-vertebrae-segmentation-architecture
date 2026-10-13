@@ -17,15 +17,15 @@ flowchart TD
 
     subgraph PREPROC_CTX ["Signal & Patch Generator Context"]
         HU_FILTER["Hounsfield Unit Thresholding [100, 1100]"]
-        DENOISE_ENG["Spatial Denoising Engine (Median Filter)"]
-        PATCH_ENG["Concurrent Sliding Window Tiler"]
-        DATASET_REPO["SpinePatchesDataset Repository"]
+        DENOISE_ENG["Spatial Denoising Engine (3x3 Gaussian Filter)"]
+        PATCH_ENG["Concurrent Sliding Window Tiler (128x128, Stride 32)"]
+        DATASET_REPO["Dataset Repository (482,833 Total Patches)"]
     end
 
     subgraph MODEL_CTX ["Deep Learning & Training Context"]
         UNET_MODEL["Patch-Based U-Net Network"]
-        TRAINER["Training Loop (60,359 Iterations)"]
-        LOSS_EVAL["Loss Function (Dice Loss + BCE)"]
+        TRAINER["Training Loop (AdamW, LR=0.0003, Epoch 15 Optimum)"]
+        LOSS_EVAL["Loss Function (BCELogitLoss)"]
         JIT_SER["TorchScript JIT Model Serializer"]
     end
 
@@ -75,13 +75,13 @@ flowchart TD
   - `HUWindowFilter`: Clips radiodensity values outside the target vertebral bone envelope $[100, 1100]\text{ HU}$.
   - `PatchTiler`: Sliding window operator that tiles 2D axial planes into $128 \times 128$ spatial arrays with $32 \times 32$ stride.
   - `PatchPair`: Coupled pair of normalized input patch and ground-truth annotation patch.
-- **State Ownership**: Coordinates thread synchronization (`threading.Lock`), patch indexing, and dataset persistence (`SpinePatchesDataset5`).
+- **State Ownership**: Coordinates thread synchronization (`threading.Lock`), patch indexing, and dataset persistence (482,833 extracted patches across 80% train / 20% validation).
 
 ### 2.3 Deep Learning & Training Context (`Predict.py`, `Single_SpineSegmentationv8.2_cpu.pth`)
 - **Boundary**: Neural network feature extraction, gradient optimization, loss computation, and tensor inference.
 - **Primary Entities**:
   - `UNetModule`: 4-level contracting and expansive convolutional network with skip connections and bottleneck.
-  - `CompositeLoss`: Mathematical combination of Dice Loss and Binary Cross-Entropy (BCE) balancing voxel frequency with boundary sharpness.
+  - `BCELogitLoss`: Binary cross-entropy with logits loss optimized via AdamW ($\text{lr} = 0.0003$, batch size 128, optimal checkpoint at Epoch 15).
   - `InferenceEngine`: Stateless forward pass wrapper applying `torch.no_grad()` and binarization thresholding ($P \ge 0.5$).
 - **State Ownership**: Model weights, optimizer state (Adam, learning rate schedules), checkpoint snapshots, and TorchScript JIT artifacts.
 
