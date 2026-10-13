@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [← Architecture Guide](architecture.md) · [← Medical Preprocessing](medical-image-preprocessing.md) · [← 3D Reconstruction](3d-volumetric-reconstruction.md)
 
-This document provides a rigorous analysis of the neural network topology, mathematical loss formulation, 174.88-hour training dynamics, and empirical evaluation metrics for the **Cervical Vertebrae Segmentation** deep learning model.
+This document provides an in-depth analysis of the neural network topology, mathematical loss formulation, 174.88-hour training dynamics, and empirical evaluation metrics for the **Spine Vertebrae Segmentation** deep learning model.
 
 ---
 
@@ -65,7 +65,7 @@ flowchart TD
 
 ## 2. Loss Function Formulation: Addressing Severe Class Imbalance
 
-In cervical spine CT slices, vertebral bone voxels occupy only **$8–15\%$** of the total slice volume, with the remaining $85–92\%$ representing air, soft tissue, and background. 
+In spine CT slices, vertebral bone voxels occupy only **$8–15\%$** of the total slice volume, with the remaining $85–92\%$ representing air, soft tissue, and background. 
 
 Using standard Binary Cross-Entropy (BCE) alone leads to degenerate convergence where the network trivially predicts background for ambiguous edge voxels, achieving deceptively low loss while failing to segment thin vertebral processes. Conversely, using Dice Loss alone produces unstable gradients early in training.
 

@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [← Architecture Guide](architecture.md) · [← Domain Map](domain-map.md)
 
-This document provides representative, production-grade code implementations extracted directly from the **Cervical Vertebrae Segmentation and Volumetric Reconstruction** platform. These examples highlight biomedical signal processing, multi-threaded dataset generation, PyTorch neural architectures, affine-preserving 3D reconstruction, and clinical WebGL visualization.
+This document provides representative, production-grade code implementations extracted directly from the **3D Spine CT Vertebrae Segmentation & Volumetric Reconstruction** platform. These examples highlight biomedical signal processing, multi-threaded dataset generation, PyTorch neural architectures, affine-preserving 3D reconstruction, and clinical WebGL visualization.
 
 ---
 

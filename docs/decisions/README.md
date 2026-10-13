@@ -2,7 +2,7 @@
 
 [← Main README](../../README.md) · [← Documentation Index](../README.md)
 
-This directory documents the core architectural, algorithmic, and biomedical engineering decisions governing the **Cervical Vertebrae Segmentation & 3D Volumetric Reconstruction** platform.
+This directory documents the core architectural, algorithmic, and biomedical engineering decisions governing the **3D Spine CT Vertebrae Segmentation & Volumetric Reconstruction** platform.
 
 ---
 

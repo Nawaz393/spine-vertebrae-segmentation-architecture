@@ -28,18 +28,18 @@ $$HU = 1000 \times \frac{\mu_{\text{tissue}} - \mu_{\text{water}}}{\mu_{\text{wa
 
 ---
 
-## 2. Radiographic Challenges in Cervical Spine Imaging
+## 2. Radiographic Challenges in Spinal Vertebrae Imaging
 
-Segmenting the cervical vertebrae ($C_1$ Atlas through $C_7$ Vertebra Prominens) presents four distinct radiographic failure modes for traditional computer vision:
+Segmenting the full vertebral column (cervical, thoracic, and lumbar vertebrae) presents four distinct radiographic failure modes for traditional computer vision:
 
 1. **Intra-Vertebral Density Heterogeneity**:
-   - A single cervical vertebra consists of an outer shell of hyperdense **cortical bone** ($>700\text{ HU}$) encasing a porous core of **trabecular bone** ($150–350\text{ HU}$). Simple intensity thresholding creates hollow "donut" masks that fail to segment the vertebral body and pedicles.
-2. **Neighboring Thoracic & Cranial Bony Contiguity**:
-   - In axial CT slices around $C_6–C_7$ and $T_1$, transverse processes lie adjacent to the first rib heads and clavicular heads. Around $C_1–C_2$, the occipital condyles and odontoid process (dens) sit in close proximity. These adjacent non-vertebral bones exhibit identical radiodensity ($>800\text{ HU}$), defeating connected-component algorithms.
+   - Every vertebra consists of an outer shell of hyperdense **cortical bone** ($>700\text{ HU}$) encasing a porous core of **trabecular bone** ($150–350\text{ HU}$). Simple intensity thresholding creates hollow "donut" masks that fail to segment the vertebral body, pedicles, and spinous processes.
+2. **Neighboring Rib & Pelvic Bony Contiguity**:
+   - In thoracic slices, ribs articulate directly with transverse processes and costal facets. In lumbar and sacral regions, the spine connects to the pelvis. These adjacent non-vertebral bones exhibit identical radiodensity ($>800\text{ HU}$), defeating connected-component algorithms.
 3. **Beam Hardening & Metallic Artifacts**:
-   - High-density dental amalgams, surgical titanium plates, and dense shoulder musculature cause photon starvation, producing severe streak artifacts across the lower cervical spine.
+   - High-density surgical pedicle screws, titanium cages, dental amalgams, and dense shoulder musculature cause photon starvation, producing severe streak artifacts across spinal scans.
 4. **Partial Volume Effects**:
-   - In CT acquisition with slice thickness $\ge 1.0\text{ mm}$, voxels spanning bone-soft tissue boundaries average the two densities, creating blurred interfaces at facet joints and intervertebral foramina.
+   - In CT acquisition with slice thickness $\ge 1.0\text{ mm}$, voxels spanning bone-soft tissue boundaries average the two densities, creating blurred interfaces at facet joints, neural foramina, and intervertebral discs.
 
 ---
 
@@ -66,7 +66,7 @@ flowchart LR
 - **Lower Threshold ($100\text{ HU}$)**:
   - Dense paraspinal muscles (trapezius, sternocleidomastoid, scalenes) peak around $50–65\text{ HU}$. Setting the gate at $100\text{ HU}$ completely eliminates muscular tissue and spinal cord dura while capturing low-density trabecular bone in osteoporosis patients ($>120\text{ HU}$).
 - **Upper Threshold ($1100\text{ HU}$)**:
-  - Normal cervical cortical bone rarely exceeds $1000–1050\text{ HU}$. Voxels exceeding $1100\text{ HU}$ almost exclusively originate from metallic hardware (pedicle screws, dental crowns) or severe X-ray scatter streaks. Capping at $1100\text{ HU}$ prevents extreme outlier values from skewing min-max normalization.
+  - Normal spinal cortical bone rarely exceeds $1000–1050\text{ HU}$. Voxels exceeding $1100\text{ HU}$ almost exclusively originate from metallic hardware (pedicle screws, dental crowns) or severe X-ray scatter streaks. Capping at $1100\text{ HU}$ prevents extreme outlier values from skewing min-max normalization.
 
 ---
 

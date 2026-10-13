@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [← Architecture Guide](architecture.md) · [← Code Examples](code-examples.md)
 
-This document maps the domain boundaries, bounded contexts, state ownership, and inter-service relationships governing the **Cervical Vertebrae Segmentation and 3D Volumetric Reconstruction** platform.
+This document maps the domain boundaries, bounded contexts, state ownership, and inter-service relationships governing the **3D Spine CT Vertebrae Segmentation & Volumetric Reconstruction** platform.
 
 ---
 
@@ -72,7 +72,7 @@ flowchart TD
 ### 2.2 Signal & Patch Generator Context (`PreProcessing.py`, `mPreprocessing.py`)
 - **Boundary**: Biomedical radiodensity filtering, contrast standardization, and high-throughput concurrent patch slicing.
 - **Primary Entities**:
-  - `HUWindowFilter`: Clips radiodensity values outside the target cervical bone envelope $[100, 1100]\text{ HU}$.
+  - `HUWindowFilter`: Clips radiodensity values outside the target vertebral bone envelope $[100, 1100]\text{ HU}$.
   - `PatchTiler`: Sliding window operator that tiles 2D axial planes into $128 \times 128$ spatial arrays with $32 \times 32$ stride.
   - `PatchPair`: Coupled pair of normalized input patch and ground-truth annotation patch.
 - **State Ownership**: Coordinates thread synchronization (`threading.Lock`), patch indexing, and dataset persistence (`SpinePatchesDataset5`).

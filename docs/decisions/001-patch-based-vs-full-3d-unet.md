@@ -3,7 +3,7 @@
 [← ADR Index](README.md) · [← Main README](../../README.md)
 
 - **Status:** Accepted
-- **Context:** High-resolution 3D cervical spine CT scans frequently exceed $512 \times 512 \times 400$ voxels. Processing full 3D isotropic volumes directly through 3D volumetric convolutional networks (3D U-Net / V-Net) requires massive GPU VRAM ($>48\text{ GB}$) and drastically limits batch sizes, leading to unstable gradient estimates, excessive downsampling artifacts, and blurred intervertebral boundary segmentations.
+- **Context:** High-resolution 3D full-spine CT scans frequently exceed $512 \times 512 \times 400$ voxels. Processing full 3D isotropic volumes directly through 3D volumetric convolutional networks (3D U-Net / V-Net) requires massive GPU VRAM ($>48\text{ GB}$) and drastically limits batch sizes, leading to unstable gradient estimates, excessive downsampling artifacts, and blurred intervertebral boundary segmentations.
 - **Decision:** Adopt a 2D patch-based tiling strategy extracting $128 \times 128$ axial sub-volumes with an overlapping stride of $32 \times 32$, train a high-capacity 2D U-Net on over 850,000 augmented patches, and reassemble volumetric masks via sliding-window Gaussian overlap averaging.
 - **Benefits:**
   - High spatial resolution preserved without downsampling voxel density.

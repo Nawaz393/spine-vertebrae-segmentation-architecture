@@ -2,7 +2,7 @@
 
 [← Main README](../README.md) · [← Documentation Index](README.md) · [← Domain Map](domain-map.md)
 
-This document provides a comprehensive architectural breakdown of the **Cervical Vertebrae Segmentation and 3D Volumetric Reconstruction** platform. It details the volumetric medical image processing lifecycle, the decoupled inference server architecture, component responsibilities, and clinical visualization integration.
+This document provides a comprehensive architectural breakdown of the **3D Spine CT Vertebrae Segmentation & Volumetric Reconstruction** platform. It details the volumetric medical image processing lifecycle, the decoupled inference server architecture, component responsibilities, and clinical visualization integration.
 
 ---
 
